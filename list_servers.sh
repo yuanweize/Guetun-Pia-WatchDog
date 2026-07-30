@@ -127,6 +127,7 @@ echo "" >&2
 
 results=""
 count=0
+tmpfile=$(mktemp)
 while IFS=$'\t' read -r meta_ip region_id region_name pf geo wg_ip; do
   t=$(LC_NUMERIC=en_US.utf8 curl -o /dev/null -s \
       --connect-timeout "$MAX_LATENCY" \
@@ -140,8 +141,10 @@ while IFS=$'\t' read -r meta_ip region_id region_name pf geo wg_ip; do
   geo_tag=""
   [[ "$geo" == "true" ]] && geo_tag=" (geo)"
 
-  results+=$(printf "%s\t%s\t%s%s\t%s\t%s\t%s\n" "$t" "$region_id" "$region_name" "$geo_tag" "$pf_icon" "$wg_ip" "$meta_ip")
+  printf "%s\t%s\t%s%s\t%s\t%s\t%s\n" "$t" "$region_id" "$region_name" "$geo_tag" "$pf_icon" "$wg_ip" "$meta_ip" >> "$tmpfile"
 done <<< "$candidates"
+results=$(cat "$tmpfile")
+rm -f "$tmpfile"
 
 if [[ -z "$results" ]]; then
   echo "❌ No servers responded within ${MAX_LATENCY}s. Try --latency 0.3" >&2
