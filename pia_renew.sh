@@ -131,11 +131,14 @@ log "✅ Key registered! peer_ip=$peer_ip server_port=$server_port"
 # ── Step 5: Update .env file for Gluetun ────────────────────────────────────
 log "Updating WireGuard variables in $GLUETUN_ENV_FILE …"
 
-# Helper: update or append a key=value in the .env file
+# Helper: update or append a key=value in the .env file (safe for Docker bind-mounts)
 update_env_var() {
   local key="$1" val="$2" file="$3"
   if grep -q "^${key}=" "$file" 2>/dev/null; then
-    sed -i "s|^${key}=.*|${key}=${val}|" "$file"
+    local tmp; tmp=$(mktemp)
+    sed "s|^${key}=.*|${key}=${val}|" "$file" > "$tmp"
+    cat "$tmp" > "$file"
+    rm -f "$tmp"
   else
     echo "${key}=${val}" >> "$file"
   fi
@@ -146,7 +149,10 @@ touch "$GLUETUN_ENV_FILE"
 
 # Update the auto-renewal timestamp comment
 if grep -q "^# WATCHDOG_LAST_RENEWAL=" "$GLUETUN_ENV_FILE" 2>/dev/null; then
-  sed -i "s|^# WATCHDOG_LAST_RENEWAL=.*|# WATCHDOG_LAST_RENEWAL=$(date -Iseconds)|" "$GLUETUN_ENV_FILE"
+  tmp_ts=$(mktemp)
+  sed "s|^# WATCHDOG_LAST_RENEWAL=.*|# WATCHDOG_LAST_RENEWAL=$(date -Iseconds)|" "$GLUETUN_ENV_FILE" > "$tmp_ts"
+  cat "$tmp_ts" > "$GLUETUN_ENV_FILE"
+  rm -f "$tmp_ts"
 else
   echo "# WATCHDOG_LAST_RENEWAL=$(date -Iseconds)" >> "$GLUETUN_ENV_FILE"
 fi

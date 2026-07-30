@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/github/license/yuanweize/gluetun-pia-watchdog?style=for-the-badge&color=blue" alt="License">
   <img src="https://img.shields.io/badge/Docker-GHCR-blue?style=for-the-badge&logo=docker" alt="Docker">
   <img src="https://img.shields.io/badge/Architecture-amd64%20%7C%20arm64-brightgreen?style=for-the-badge" alt="Architecture">
-  <img src="https://img.shields.io/badge/Release-v1.0.2-orange?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Release-v1.0.3-orange?style=for-the-badge" alt="Version">
   <a href="README_CN.md"><img src="https://img.shields.io/badge/文档-简体中文-red?style=for-the-badge" alt="中文文档"></a>
 </p>
 
