@@ -19,6 +19,7 @@
   <a href="#server-browser">Server Browser</a> •
   <a href="#configuration">Configuration</a> •
   <a href="#architecture">Architecture</a> •
+  <a href="#acknowledgements--credits">Credits</a> •
   <a href="#faq">FAQ</a>
 </p>
 
@@ -39,7 +40,7 @@
 
 ```
 Watchdog detects failure → Authenticates with PIA API → Measures server latency
-→ Registers fresh WireGuard keys → Updates .env → Restarts Gluetun
+→ Registers fresh WireGuard keys → Updates .env & wg0.conf → Restarts Gluetun
 → Injects port into qBittorrent → 🎉 Fully Automated & Hands-Free
 ```
 
@@ -52,7 +53,7 @@ Watchdog detects failure → Authenticates with PIA API → Measures server late
 | 🔑 **Auto Key Registration** | Calls PIA's REST API `addKey` to register WireGuard keys automatically |
 | 🌍 **Smart Server Selection** | Ping-tests 100+ servers to find the fastest port-forwarding node |
 | 🔍 **Interactive Server Browser** | Built-in CLI tool to search & filter servers by region, latency, or port-forwarding |
-| 📝 **Atomic `.env` Updates** | Surgically updates only WireGuard variables without wiping user credentials |
+| 📝 **Atomic `.env` & `wg0.conf` Updates** | Surgically updates WireGuard parameters without modifying user credentials (Docker bind-mount safe) |
 | 🔄 **Docker Socket Automation** | Triggers container restart via Docker socket (`:ro`) upon renewal |
 | 🏥 **Self-Healing Watchdog** | Checks VPN health every 2 minutes; auto-renews after 3 consecutive failures |
 | ⏰ **Proactive Weekly Renewal** | Forces key refresh every 7 days to prevent silent key expiry |
@@ -119,6 +120,7 @@ services:
       - VPN_PORT_FORWARDING_PASSWORD=${PIA_PASS}
     volumes:
       - ./data/gluetun/temp:/tmp/gluetun
+      - ./data/gluetun/temp/wg0.conf:/gluetun/wireguard/wg0.conf:ro
     ports:
       - "8090:8080"
     restart: unless-stopped
@@ -189,16 +191,6 @@ docker compose run --rm gluetun-pia-watchdog list-servers --pf --latency 0.05
 docker compose run --rm gluetun-pia-watchdog list-servers --pf --ids
 ```
 
-Sample output:
-```
-  #     LATENCY     REGION ID                       NAME                                    PF   WIREGUARD IP
-  ────  ──────────  ──────────────────────────────  ──────────────────────────────────────  ───  ─────────────────
-  1     0.003799s   de_germany-so                   DE Germany Streaming Optimized           ✅   147.90.227.155
-  2     0.003858s   de-frankfurt                    DE Frankfurt                             ✅   147.90.209.204
-  3     0.007621s   czech                           Czech Republic                           ✅   212.102.39.92
-  4     0.010727s   nl_amsterdam                    Netherlands                              ✅   158.173.21.86
-```
-
 ---
 
 ## ⚙️ Configuration
@@ -212,20 +204,6 @@ Sample output:
 | `PREFERRED_REGION` | `none` | Region ID. `none` = auto-select fastest. Get IDs via `list-servers --ids` |
 | `MAX_LATENCY` | `0.1` | Maximum acceptable latency in seconds |
 | `PIA_PF` | `true` | Filter for port-forwarding capable servers |
-
-### Watchdog Advanced Options
-
-| Variable | Default | Description |
-|:---|:---|:---|
-| `GLUETUN_CONTAINER` | `gluetun` | Name of your Gluetun container |
-| `GLUETUN_ENV_FILE` | `/config/.env` | Mounted `.env` file path |
-| `QBITTORRENT_SERVER` | `gluetun` | qBittorrent hostname |
-| `QBITTORRENT_PORT` | `8080` | qBittorrent WebUI port |
-| `QBITTORRENT_USER` | `admin` | qBittorrent username |
-| `QBITTORRENT_PASS` | `adminadmin` | qBittorrent password |
-| `HEALTH_CHECK_INTERVAL` | `120` | Health check interval in seconds |
-| `HEALTH_CHECK_FAILURES` | `3` | Consecutive failures before triggering renewal |
-| `RENEW_INTERVAL` | `604800` | Proactive renewal interval (default: 7 days) |
 
 ---
 
@@ -250,7 +228,7 @@ Sample output:
 │  │  └───────────┬────────────┘  │    └────────────────────────────┘  ││
 │  │              │               │                                    ││
 │  │  ┌───────────▼────────────┐  │    ┌────────────────────────────┐  ││
-│  │  │  Update .env           │  │    │      qBittorrent           │  ││
+│  │  │  Update .env & wg0.conf│  │    │      qBittorrent           │  ││
 │  │  │  Restart Gluetun ──────┼──┼───▶│                            │  ││
 │  │  └────────────────────────┘  │    │  ┌──────────────────────┐  │  ││
 │  │                              │    │  │  Listen Port ◀──────┼──┼──┘│
@@ -263,6 +241,18 @@ Sample output:
 │  .env ◀── Auto-updated by Watchdog ── Read by Docker Compose         │
 └───────────────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## ❤️ Acknowledgements & Credits
+
+Special thanks to the awesome open-source projects that made this possible:
+
+- **[qdm12/gluetun](https://github.com/qdm12/gluetun)** — The gold-standard VPN client container for Docker.
+- **[snoringdragon/gluetun-qbittorrent-port-manager](https://github.com/snoringdragon/gluetun-qbittorrent-port-manager)** — The original inspiration for automated qBittorrent port injection.
+- **[pia-foss/manual-connections](https://github.com/pia-foss/manual-connections)** — Official Private Internet Access manual connection scripts.
+- **[LinuxServer.io](https://linuxserver.io)** — Premium Docker container images for the home server community.
+- **Google DeepMind / Antigravity AI Team** — Pair-programming & agentic AI assistant.
 
 ---
 

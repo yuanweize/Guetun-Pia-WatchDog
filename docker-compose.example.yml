@@ -28,6 +28,7 @@ services:
       - VPN_PORT_FORWARDING_PASSWORD=${PIA_PASS}
     volumes:
       - ./data/gluetun/temp:/tmp/gluetun
+      - ./data/gluetun/temp/wg0.conf:/gluetun/wireguard/wg0.conf:ro
     ports:
       - "8090:8080"   # qBittorrent WebUI
     restart: unless-stopped
@@ -43,7 +44,6 @@ services:
       - MAX_LATENCY=${MAX_LATENCY}
       - PIA_PF=${PIA_PF}
       - GLUETUN_CONTAINER=gluetun
-      - GLUETUN_ENV_FILE=/config/.env
       - QBITTORRENT_SERVER=gluetun
       - QBITTORRENT_PORT=8080
       - QBITTORRENT_USER=admin

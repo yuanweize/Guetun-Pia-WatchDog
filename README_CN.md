@@ -18,6 +18,7 @@
   <a href="#-服务器交互式浏览器">服务器浏览器</a> •
   <a href="#-环境变量配置">环境变量配置</a> •
   <a href="#-工作原理架构">工作原理</a> •
+  <a href="#-致谢与特别鸣谢">致谢与鸣谢</a> •
   <a href="#-常见问题与故障排查">常见问题</a>
 </p>
 
@@ -36,7 +37,7 @@
 
 1. **自动注册**：通过 PIA 官方 REST API 自动生成并注册 WireGuard 密钥对
 2. **智能选路**：自动测速并选择延迟最低且支持端口转发（PF）的 PIA 服务器
-3. **无缝更新**：原子化更新 `.env` 文件并自动调用 Docker API 重启 Gluetun
+3. **无缝更新**：原子化更新 `.env` & `wg0.conf` 文件并自动调用 Docker API 重启 Gluetun
 4. **自愈断线看门狗**：定时检测 VPN 连通性，断线自动触发全套重连续期流程
 5. **端口全自动注入**：监控 `/tmp/gluetun/forwarded_port` 并自动写入 qBittorrent
 
@@ -49,7 +50,7 @@
 | 🔑 **全自动密钥注册** | 自动调用 PIA REST API 完成 `addKey` 注册，无需任何人工干预 |
 | 🌍 **智能低延迟选路** | 自动 Ping 测速，从全球 100+ 服务器中选择最快节点，或锁定指定地区 |
 | 🔍 **服务器浏览器** | 内置 CLI 交互式工具，支持按端口转发（PF）、地区关键字、延迟过滤 |
-| 📝 **安全更新 `.env`** | 仅精确更新 WireGuard 6 个动态变量，完美保留你的账户密码和其他配置 |
+| 📝 **安全更新 `.env` 与 `wg0.conf`** | 精确更新 WireGuard 配置，完美兼容 Docker bind-mount 文件挂载 |
 | 🔄 **Docker Socket 联动** | 连接宿主机 Docker Socket (`:ro`)，续期完成后自动重启 Gluetun |
 | 🏥 **连通性看门狗** | 每 2 分钟执行一次健康检查，连续 3 次失败自动触发自愈续期 |
 | ⏰ **预防性定期续期** | 即使网络正常，每 7 天也会自动预防性刷一次密钥，防止静默过期 |
@@ -117,6 +118,7 @@ services:
       - VPN_PORT_FORWARDING_PASSWORD=${PIA_PASS}
     volumes:
       - ./data/gluetun/temp:/tmp/gluetun
+      - ./data/gluetun/temp/wg0.conf:/gluetun/wireguard/wg0.conf:ro
     ports:
       - "8090:8080"   # qBittorrent WebUI
     restart: unless-stopped
@@ -187,109 +189,17 @@ docker compose run --rm gluetun-pia-watchdog list-servers --pf --latency 0.05
 docker compose run --rm gluetun-pia-watchdog list-servers --pf --ids
 ```
 
-示例输出：
-
-```
-  #     LATENCY     REGION ID                       NAME                                    PF   WIREGUARD IP
-  ────  ──────────  ──────────────────────────────  ──────────────────────────────────────  ───  ─────────────────
-  1     0.003799s   de_germany-so                   DE Germany Streaming Optimized           ✅   147.90.227.155
-  2     0.003858s   de-frankfurt                    DE Frankfurt                             ✅   147.90.209.204
-  3     0.007621s   czech                           Czech Republic                           ✅   212.102.39.92
-  4     0.010727s   nl_amsterdam                    Netherlands                              ✅   158.173.21.86
-```
-
 ---
 
-## ⚙️ 环境变量配置
+## ❤️ 致谢与特别鸣谢
 
-所有的关键配置只需要在 `.env` 中维护一份：
+衷心感谢以下优秀的开源项目与团队，正是有了你们的奠基，本项目才得以诞生：
 
-### 用户核心配置 (`.env`)
-
-| 变量名 | 默认值 | 说明 |
-|:---|:---|:---|
-| `PIA_USER` | *(必填)* | PIA 账号 (例如 `p1234567`) |
-| `PIA_PASS` | *(必填)* | PIA 密码 |
-| `PREFERRED_REGION` | `none` | 目标地区 ID。`none` 表示自动选最快节点。可通过 `list-servers --ids` 查询 |
-| `MAX_LATENCY` | `0.1` | 自动选择节点时的最大可容忍延迟（秒） |
-| `PIA_PF` | `true` | 是否仅筛选支持端口转发的节点 |
-
-### Watchdog 高级调优（可选）
-
-| 变量名 | 默认值 | 说明 |
-|:---|:---|:---|
-| `GLUETUN_CONTAINER` | `gluetun` | 需要监控和重启的 Gluetun 容器名称 |
-| `GLUETUN_ENV_FILE` | `/config/.env` | 容器内挂载的 `.env` 路径 |
-| `QBITTORRENT_SERVER` | `gluetun` | qBittorrent 访问地址 |
-| `QBITTORRENT_PORT` | `8080` | qBittorrent WebUI 端口 |
-| `QBITTORRENT_USER` | `admin` | qBittorrent 用户名 |
-| `QBITTORRENT_PASS` | `adminadmin` | qBittorrent 密码 |
-| `HEALTH_CHECK_INTERVAL` | `120` | 健康检查间隔（秒） |
-| `HEALTH_CHECK_FAILURES` | `3` | 连续失败多少次触发自动重连续期 |
-| `RENEW_INTERVAL` | `604800` | 预防性定期续期周期（秒，默认 7 天） |
-
----
-
-## 🏗️ 工作原理架构
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                             Docker 宿主机                            │
-│                                                                      │
-│  ┌──────────────────────────────┐    ┌────────────────────────────┐  │
-│  │  gluetun-pia-watchdog        │    │        gluetun             │  │
-│  │                              │    │                            │  │
-│  │  ┌────────────────────────┐  │    │  ┌──────────────────────┐  │  │
-│  │  │  健康检查轮询 (120s)     │──┼────┼─▶│  VPN 连接 (WireGuard)│  │  │
-│  │  └───────────┬────────────┘  │    │  └──────────────────────┘  │  │
-│  │              │ 失败 ×3       │    │                            │  │
-│  │  ┌───────────▼────────────┐  │    │  ┌──────────────────────┐  │  │
-│  │  │  PIA REST API 客户端   │  │    │  │  PIA 端口转发 API    │  │  │
-│  │  │  → 身份认证获取 Token   │  │    │  │  → forwarded_port ──┼──┼──┐
-│  │  │  → 全球节点 Ping 测速   │  │    │  └──────────────────────┘  │  ││
-│  │  │  → 生成 & 注册 WG Key   │  │    │                            │  ││
-│  │  └───────────┬────────────┘  │    └────────────────────────────┘  ││
-│  │              │               │                                    ││
-│  │  ┌───────────▼────────────┐  │    ┌────────────────────────────┐  ││
-│  │  │  更新 .env 文件        │  │    │      qBittorrent           │  ││
-│  │  │  Docker API 重启 Gluetun ┼──┼───▶│                            │  ││
-│  │  └────────────────────────┘  │    │  ┌──────────────────────┐  │  ││
-│  │                              │    │  │  监听端口 ◀──────────┼──┼──┘│
-│  │  ┌────────────────────────┐  │    │  └──────────────────────┘  │   │
-│  │  │  端口监听器             │  │    │                            │   │
-│  │  │  (inotifywait 实时同步) ┼──┼───▶│  API 设置监听端口          │   │
-│  │  └────────────────────────┘  │    └────────────────────────────┘   │
-│  └──────────────────────────────┘                                     │
-│                                                                       │
-│  .env ◀── 自动更新 ── Read by Docker Compose                          │
-└───────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## ❓ 常见问题与故障排查
-
-<details>
-<summary><strong>为什么不直接用 Gluetun 内置的 PIA 支持？</strong></summary>
-
-Gluetun 内置的 PIA 实现经常因 PIA 官方节点轮换或 API 变更而失效报 `i/o timeout`。使用 `custom` WireGuard 模式配合本地注册的密钥是最稳定的方式，而 Watchdog 正是把这个繁琐的注册过程彻底自动化。
-</details>
-
-<details>
-<summary><strong>挂载 Docker Socket (`docker.sock`) 安全吗？</strong></summary>
-
-容器挂载 Socket 时使用了 **只读权限** (`:ro`)。Watchdog 仅使用 API 执行：
-1. 容器内连通性测试 (`exec`)
-2. 重启 Gluetun 容器 (`restart`)
-
-无法进行拉取镜像、删除容器或破坏宿主机的敏感操作。
-</details>
-
-<details>
-<summary><strong>密钥更新重连时会有多久中断？</strong></summary>
-
-整个过程通常在 **15-30 秒** 内完成（包含下载节点列表、生成密钥、API 注册、重启 Gluetun 和恢复端口绑定）。qBittorrent 会在端口恢复后自动恢复做种和下载。
-</details>
+- **[qdm12/gluetun](https://github.com/qdm12/gluetun)** — Docker 生态中最强大的 VPN 客户端容器。
+- **[snoringdragon/gluetun-qbittorrent-port-manager](https://github.com/snoringdragon/gluetun-qbittorrent-port-manager)** — 自动向 qBittorrent 注入端口的最初灵感来源。
+- **[pia-foss/manual-connections](https://github.com/pia-foss/manual-connections)** — PIA 官方开源的 WireGuard 手动连接脚本。
+- **[LinuxServer.io](https://linuxserver.io)** — 为 Home Lab 社区提供高品质 Docker 镜像的团队。
+- **Google DeepMind / Antigravity AI 团队** — 强大的 Agentic AI 结对编程与自动化构建支撑。
 
 ---
 

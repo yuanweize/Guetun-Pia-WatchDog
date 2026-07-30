@@ -167,6 +167,21 @@ update_env_var "WIREGUARD_ADDRESSES"       "${peer_ip}/32" "$GLUETUN_ENV_FILE"
 
 log "✅ .env updated (other variables preserved)."
 
+# Generate standard WireGuard wg0.conf for Gluetun file mount
+WG_CONF="/tmp/gluetun/wg0.conf"
+mkdir -p "$(dirname "$WG_CONF")"
+cat > "$WG_CONF" <<EOF
+[Interface]
+PrivateKey = ${privKey}
+Address = ${peer_ip}/32
+
+[Peer]
+PublicKey = ${server_key}
+Endpoint = ${WG_SERVER_IP}:${server_port}
+AllowedIPs = 0.0.0.0/0
+EOF
+log "✅ WireGuard config written to $WG_CONF"
+
 # ── Step 6: Restart Gluetun container ───────────────────────────────────────
 if [[ -S /var/run/docker.sock ]]; then
   log "Restarting container '$GLUETUN_CONTAINER' …"
