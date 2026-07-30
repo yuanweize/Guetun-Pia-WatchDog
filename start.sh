@@ -145,24 +145,29 @@ port_watcher() {
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════════════════════════
-log "═══════════════════════════════════════════════════════"
-log "  gluetun-pia-watchdog  v1.0.0"
-log "═══════════════════════════════════════════════════════"
+cat <<'LOGO'
+   ______   __                  __                ____  _____  ___       _       ______     __       __                    __
+  / ____/  / /  __  __  ___    / /_  __  ______  / __ \/  _/  /   |     | |     / / __ \   / /______/ /_  ____  ____  ____/ /
+ / / __   / /  / / / / / _ \  / __/ / / / / __ \/ /_/ // /   / /| |     | | /| / / /_/ /  / __/ ___/ __ \/ __ \/ __ \/ __  / 
+/ /_/ /  / /__/ /_/ / /  __/ / /_  / /_/ / / / / ____// /   / ___ |     | |/ |/ / ____/  / /_/ /__/ / / / /_/ / /_/ / /_/ /  
+\____/  /____/\__,_/  \___/  \__/  \__,_/_/ /_/_/   /___/  /_/  |_|     |__/|__/_/       \__/\___/_/ /_/\____/\____/\__,_/   
+                                                                                                                   v1.0.2
+LOGO
+log "════════════════════════════════════════════════════════════════════════════"
 log "  GLUETUN_CONTAINER    = $GLUETUN_CONTAINER"
 log "  HEALTH_CHECK_INTERVAL= ${HEALTH_CHECK_INTERVAL}s"
 log "  HEALTH_CHECK_FAILURES= $HEALTH_CHECK_FAILURES"
 log "  RENEW_INTERVAL       = ${RENEW_INTERVAL}s"
 log "  QBITTORRENT_SERVER   = $QBITTORRENT_SERVER"
 log "  PREFERRED_REGION     = ${PREFERRED_REGION:-none}"
-log "═══════════════════════════════════════════════════════"
+log "════════════════════════════════════════════════════════════════════════════"
 
-# ── Initial setup: if no .env or it's empty, do first renewal ────────────────
-if [[ ! -s "$GLUETUN_ENV_FILE" ]]; then
-  log "No existing .env found at $GLUETUN_ENV_FILE — running initial PIA setup …"
+# ── Initial setup: if WireGuard IP missing or unpopulated in .env, run renew ─
+if ! grep -E -q '^WIREGUARD_ENDPOINT_IP=[0-9]+' "$GLUETUN_ENV_FILE" 2>/dev/null; then
+  log "WireGuard configuration in $GLUETUN_ENV_FILE missing or empty — running initial PIA setup …"
   run_renewal || warn "Initial renewal failed; will retry in watchdog loop."
-  # Give Gluetun time to come up after restart
-  log "Waiting 30s for Gluetun to initialize …"
-  sleep 30
+  log "Waiting 15s for Gluetun to initialize …"
+  sleep 15
 fi
 
 # ── Start port watcher in background ────────────────────────────────────────

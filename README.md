@@ -1,19 +1,20 @@
+# 🛡️ Gluetun PIA Watchdog
+
 <p align="center">
-  <img src="https://img.shields.io/github/license/yuanweize/gluetun-pia-watchdog?style=flat-square" alt="License">
-  <img src="https://img.shields.io/github/actions/workflow/status/yuanweize/gluetun-pia-watchdog/docker-publish.yml?style=flat-square&label=build" alt="Build Status">
-  <img src="https://img.shields.io/badge/docker-ghcr.io-blue?style=flat-square&logo=docker" alt="Docker">
-  <img src="https://img.shields.io/badge/platform-amd64%20%7C%20arm64-lightgrey?style=flat-square" alt="Platform">
+  <img src="https://img.shields.io/github/license/yuanweize/gluetun-pia-watchdog?style=for-the-badge&color=blue" alt="License">
+  <img src="https://img.shields.io/badge/Docker-GHCR-blue?style=for-the-badge&logo=docker" alt="Docker">
+  <img src="https://img.shields.io/badge/Architecture-amd64%20%7C%20arm64-brightgreen?style=for-the-badge" alt="Architecture">
+  <img src="https://img.shields.io/badge/Release-v1.0.2-orange?style=for-the-badge" alt="Version">
+  <a href="README_CN.md"><img src="https://img.shields.io/badge/文档-简体中文-red?style=for-the-badge" alt="中文文档"></a>
 </p>
 
-<h1 align="center">🛡️ Gluetun PIA Watchdog</h1>
-
 <p align="center">
-  <strong>Automatic PIA WireGuard key registration, health monitoring, self-healing reconnection & qBittorrent port injection — all in one lightweight container.</strong>
+  <strong>Automatic PIA WireGuard key registration, health monitoring, self-healing reconnection & qBittorrent port injection — all in one container.</strong>
 </p>
 
 <p align="center">
   <a href="#the-problem">The Problem</a> •
-  <a href="#the-solution">The Solution</a> •
+  <a href="#key-features">Features</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#server-browser">Server Browser</a> •
   <a href="#configuration">Configuration</a> •
@@ -25,65 +26,63 @@
 
 ## The Problem
 
-[Gluetun](https://github.com/qdm12/gluetun) is the gold standard for routing Docker containers through a VPN. But when used with **Private Internet Access (PIA)** in `custom` WireGuard mode, you face a painful cycle:
+[Gluetun](https://github.com/qdm12/gluetun) is the gold standard for routing Docker containers through a VPN. But when used with **Private Internet Access (PIA)** in `custom` WireGuard mode, server IP and key rotations cause:
 
-```
-PIA rotates servers → Your WireGuard keys expire → Gluetun can't connect
-→ i/o timeout loops → You manually run scripts → Copy-paste 6 variables
-→ Restart everything → Repeat in a few days/weeks 😩
-```
-
-The official [manual-connections](https://github.com/pia-foss/manual-connections) scripts require interactive input. The built-in PIA provider in Gluetun frequently breaks. And [gluetun-qbittorrent-port-manager](https://github.com/snoringdragon/gluetun-qbittorrent-port-manager) only handles port injection — it can't fix a dead VPN connection.
+- ❌ `i/o timeout` error loops in Gluetun logs
+- ❌ Manual script runs via [manual-connections](https://github.com/pia-foss/manual-connections)
+- ❌ Copy-pasting WireGuard credentials into `docker-compose.yml` or `.env`
+- ❌ Constant manual intervention every few days/weeks
 
 ## The Solution
 
-**Gluetun PIA Watchdog** is a single, lightweight Alpine container (~15 MB) that **eliminates all manual intervention**:
+**Gluetun PIA Watchdog** is a single Alpine container (~15 MB) that automates the entire lifecycle:
 
 ```
-Watchdog detects failure → Authenticates with PIA API → Selects fastest server
-→ Generates fresh WireGuard keys → Registers with PIA → Updates .env
-→ Restarts Gluetun → Injects forwarded port into qBittorrent → 🎉 All automatic
+Watchdog detects failure → Authenticates with PIA API → Measures server latency
+→ Registers fresh WireGuard keys → Updates .env → Restarts Gluetun
+→ Injects port into qBittorrent → 🎉 Fully Automated & Hands-Free
 ```
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
 | Feature | Description |
-|:--------|:------------|
-| 🔑 **Auto Key Registration** | Generates WireGuard keypairs and registers them with PIA's `addKey` API — zero manual steps |
-| 🌍 **Smart Server Selection** | Auto-selects the lowest latency server with port-forwarding support, or lock to a preferred region |
-| 🔍 **Server Browser** | Built-in CLI tool to browse, filter, and search PIA's 100+ servers |
-| 📝 **Atomic `.env` Updates** | Surgically updates only WireGuard variables — preserves your credentials and other config |
-| 🔄 **Auto Container Restart** | Restarts Gluetun via Docker socket after each renewal — fully hands-off |
-| 🏥 **Health Monitoring** | Checks Gluetun connectivity every N seconds; self-heals after configurable failures |
-| ⏰ **Proactive Renewal** | Forces key refresh every 7 days (configurable) — prevents silent expiry surprises |
-| 🔌 **Port Injection** | Watches `forwarded_port` via `inotifywait` and pushes it to qBittorrent's API |
-| 🪶 **Lightweight** | ~15 MB Alpine image. No Python, no Node.js — just bash, curl, jq, and wireguard-tools |
-| 🏗️ **Multi-Arch** | Built for `linux/amd64` and `linux/arm64` |
+|:---|:---|
+| 🔑 **Auto Key Registration** | Calls PIA's REST API `addKey` to register WireGuard keys automatically |
+| 🌍 **Smart Server Selection** | Ping-tests 100+ servers to find the fastest port-forwarding node |
+| 🔍 **Interactive Server Browser** | Built-in CLI tool to search & filter servers by region, latency, or port-forwarding |
+| 📝 **Atomic `.env` Updates** | Surgically updates only WireGuard variables without wiping user credentials |
+| 🔄 **Docker Socket Automation** | Triggers container restart via Docker socket (`:ro`) upon renewal |
+| 🏥 **Self-Healing Watchdog** | Checks VPN health every 2 minutes; auto-renews after 3 consecutive failures |
+| ⏰ **Proactive Weekly Renewal** | Forces key refresh every 7 days to prevent silent key expiry |
+| 🔌 **qBittorrent Port Injection** | Uses `inotifywait` to catch port changes instantly and push to qBittorrent API |
+| 🪶 **Ultra-Lightweight** | ~15 MB Alpine image — zero heavy dependencies |
+| 🏗️ **Multi-Arch Support** | Pre-built for `linux/amd64` and `linux/arm64` |
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
-### 1. Create your `.env` file
+### 1. Create `.env`
 
 ```bash
 cp .env.example .env
-nano .env
 ```
 
+Edit `.env` with your PIA credentials:
+
 ```env
-# ── PIA Credentials (REQUIRED) ──
+# ── PIA Credentials (Required) ──
 PIA_USER=p1234567
 PIA_PASS=your_pia_password
 
-# ── Server Selection ──
-PREFERRED_REGION=none    # "none" = auto-select fastest
+# ── Server Preferences ──
+PREFERRED_REGION=none    # "none" = auto-select lowest latency
 MAX_LATENCY=0.1          # seconds
 PIA_PF=true              # only port-forwarding servers
 
-# ── Dynamic WireGuard Config (auto-generated — DO NOT EDIT) ──
+# ── Dynamic WireGuard Config (auto-populated by Watchdog) ──
 SERVER_NAMES=
 WIREGUARD_ENDPOINT_IP=
 WIREGUARD_ENDPOINT_PORT=
@@ -92,7 +91,7 @@ WIREGUARD_PRIVATE_KEY=
 WIREGUARD_ADDRESSES=
 ```
 
-### 2. Add to your `docker-compose.yml`
+### 2. Configure `docker-compose.yml`
 
 ```yaml
 services:
@@ -106,14 +105,14 @@ services:
     environment:
       - VPN_SERVICE_PROVIDER=custom
       - VPN_TYPE=wireguard
-      # ⬇️ Auto-populated from .env by the watchdog
+      # ⬇️ Auto-populated from .env by gluetun-pia-watchdog
       - SERVER_NAMES=${SERVER_NAMES}
       - WIREGUARD_ENDPOINT_IP=${WIREGUARD_ENDPOINT_IP}
       - WIREGUARD_ENDPOINT_PORT=${WIREGUARD_ENDPOINT_PORT}
       - WIREGUARD_PUBLIC_KEY=${WIREGUARD_PUBLIC_KEY}
       - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
       - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES}
-      # PIA port forwarding
+      # PIA Port Forwarding
       - VPN_PORT_FORWARDING=on
       - VPN_PORT_FORWARDING_PROVIDER=private internet access
       - VPN_PORT_FORWARDING_USERNAME=${PIA_USER}
@@ -167,224 +166,106 @@ services:
 
 ```bash
 docker compose up -d
-docker logs -f gluetun-pia-watchdog  # Watch the magic
+docker logs -f gluetun-pia-watchdog
 ```
-
-On first start, the watchdog will automatically:
-1. ✅ Authenticate with PIA
-2. ✅ Find the fastest server
-3. ✅ Generate & register WireGuard keys
-4. ✅ Write your `.env` file
-5. ✅ Restart Gluetun with fresh config
-6. ✅ Inject the forwarded port into qBittorrent
 
 ---
 
 ## 🔍 Server Browser
 
-Don't know which PIA region to use? The built-in server browser helps you explore:
+Find the fastest server for your location with the interactive server browser:
 
 ```bash
-# List all port-forwarding servers, sorted by latency
-docker run --rm ghcr.io/yuanweize/gluetun-pia-watchdog list-servers --pf
+# List all port-forwarding servers sorted by latency
+docker compose run --rm gluetun-pia-watchdog list-servers --pf
 
-# Filter by region keyword
-docker run --rm ghcr.io/yuanweize/gluetun-pia-watchdog list-servers --pf --region germany
+# Filter by region (e.g. Germany, Netherlands, US)
+docker compose run --rm gluetun-pia-watchdog list-servers --pf --region germany
 
-# Custom latency threshold
-docker run --rm ghcr.io/yuanweize/gluetun-pia-watchdog list-servers --pf --latency 0.05
+# Latency threshold < 50ms (0.05s)
+docker compose run --rm gluetun-pia-watchdog list-servers --pf --latency 0.05
 
-# Get just region IDs (for your PREFERRED_REGION config)
-docker run --rm ghcr.io/yuanweize/gluetun-pia-watchdog list-servers --pf --ids
-
-# Raw JSON output
-docker run --rm ghcr.io/yuanweize/gluetun-pia-watchdog list-servers --pf --json
+# Output only region IDs (to copy into PREFERRED_REGION)
+docker compose run --rm gluetun-pia-watchdog list-servers --pf --ids
 ```
 
-Example output:
+Sample output:
 ```
-🌍 Fetching PIA server list …
-⏱️  Testing latency (max 0.1s) …
-
   #     LATENCY     REGION ID                       NAME                                    PF   WIREGUARD IP
   ────  ──────────  ──────────────────────────────  ──────────────────────────────────────  ───  ─────────────────
   1     0.003799s   de_germany-so                   DE Germany Streaming Optimized           ✅   147.90.227.155
   2     0.003858s   de-frankfurt                    DE Frankfurt                             ✅   147.90.209.204
   3     0.007621s   czech                           Czech Republic                           ✅   212.102.39.92
-  4     0.009498s   ad                              Andorra (geo)                            ✅   173.239.217.186
-  ...
-
-📊 Found 67 servers responding within 0.1s
-
-💡 To use a specific region, set PREFERRED_REGION in your .env file.
-   Example: PREFERRED_REGION=de_germany-so
+  4     0.010727s   nl_amsterdam                    Netherlands                              ✅   158.173.21.86
 ```
 
 ---
 
 ## ⚙️ Configuration
 
-All configuration lives in a **single `.env` file** — no duplicate credentials, no extra config files.
-
-### `.env` — User Settings
+### `.env` User Variables
 
 | Variable | Default | Description |
-|:---------|:--------|:------------|
+|:---|:---|:---|
 | `PIA_USER` | *(required)* | PIA username (e.g. `p1234567`) |
 | `PIA_PASS` | *(required)* | PIA password |
-| `PREFERRED_REGION` | `none` | Region ID. `none` = auto-select lowest latency. Find IDs with `list-servers --ids` |
+| `PREFERRED_REGION` | `none` | Region ID. `none` = auto-select fastest. Get IDs via `list-servers --ids` |
 | `MAX_LATENCY` | `0.1` | Maximum acceptable latency in seconds |
-| `PIA_PF` | `true` | Only consider port-forwarding servers |
+| `PIA_PF` | `true` | Filter for port-forwarding capable servers |
 
-### Container Environment — Behavior Tuning
+### Watchdog Advanced Options
 
 | Variable | Default | Description |
-|:---------|:--------|:------------|
+|:---|:---|:---|
 | `GLUETUN_CONTAINER` | `gluetun` | Name of your Gluetun container |
-| `GLUETUN_ENV_FILE` | `/config/.env` | Path where `.env` is mounted inside the container |
-| `QBITTORRENT_SERVER` | `gluetun` | Hostname/IP of qBittorrent |
+| `GLUETUN_ENV_FILE` | `/config/.env` | Mounted `.env` file path |
+| `QBITTORRENT_SERVER` | `gluetun` | qBittorrent hostname |
 | `QBITTORRENT_PORT` | `8080` | qBittorrent WebUI port |
 | `QBITTORRENT_USER` | `admin` | qBittorrent username |
 | `QBITTORRENT_PASS` | `adminadmin` | qBittorrent password |
-| `PORT_FORWARDED` | `/tmp/gluetun/forwarded_port` | Gluetun's forwarded port file path |
-| `HTTP_S` | `http` | Protocol for qBittorrent API |
-| `HEALTH_CHECK_INTERVAL` | `120` | Seconds between health checks |
-| `HEALTH_CHECK_FAILURES` | `3` | Consecutive failures before renewal |
-| `RENEW_INTERVAL` | `604800` | Seconds between proactive renewals (default: 7 days) |
+| `HEALTH_CHECK_INTERVAL` | `120` | Health check interval in seconds |
+| `HEALTH_CHECK_FAILURES` | `3` | Consecutive failures before triggering renewal |
+| `RENEW_INTERVAL` | `604800` | Proactive renewal interval (default: 7 days) |
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                        Docker Host                               │
-│                                                                  │
-│  ┌──────────────────────────┐    ┌───────────────────────────┐  │
-│  │  gluetun-pia-watchdog    │    │        gluetun             │  │
-│  │                          │    │                           │  │
-│  │  ┌────────────────────┐  │    │  ┌─────────────────────┐  │  │
-│  │  │  Health Check Loop │──┼────┼─▶│  VPN Connection     │  │  │
-│  │  └────────┬───────────┘  │    │  └─────────────────────┘  │  │
-│  │           │ FAIL ×3      │    │                           │  │
-│  │  ┌────────▼───────────┐  │    │  ┌─────────────────────┐  │  │
-│  │  │  PIA API Client    │  │    │  │  Port Forwarding    │  │  │
-│  │  │  → Authenticate    │  │    │  │  → forwarded_port ──┼──┼──┐
-│  │  │  → Select Server   │  │    │  └─────────────────────┘  │  │
-│  │  │  → Register WG Key │  │    │                           │  │
-│  │  └────────┬───────────┘  │    └───────────────────────────┘  │
-│  │           │              │                                    │
-│  │  ┌────────▼───────────┐  │    ┌───────────────────────────┐  │
-│  │  │  Update .env       │  │    │      qBittorrent          │  │
-│  │  │  Restart Gluetun ──┼──┼───▶│                           │  │
-│  │  └────────────────────┘  │    │  ┌─────────────────────┐  │  │
-│  │                          │    │  │  Listen Port ◀──────┼──┼──┘
-│  │  ┌────────────────────┐  │    │  └─────────────────────┘  │
-│  │  │  Port Watcher      │  │    │                           │
-│  │  │  (inotifywait) ────┼──┼───▶│  API: setPreferences     │
-│  │  └────────────────────┘  │    └───────────────────────────┘
-│  └──────────────────────────┘                                    │
-│                                                                  │
-│  .env ◀── auto-updated by watchdog ──▶ read by docker compose   │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-### Lifecycle
-
-1. **Startup** — Checks if `.env` has valid WireGuard config. If not → full PIA registration
-2. **Registration** — Auth → server list → latency test → keygen → API call → write `.env`
-3. **Restart** — Sends restart command to Gluetun via Docker socket API
-4. **Port Watch** — `inotifywait` on `/tmp/gluetun/forwarded_port` → push to qBittorrent
-5. **Monitoring** — Health check every 2 min → 3 failures → auto-renewal
-6. **Proactive** — Forced renewal every 7 days even if healthy
-
----
-
-## 📦 Docker Commands
-
-```bash
-# Run the watchdog (default)
-docker compose up -d gluetun-pia-watchdog
-
-# Browse servers
-docker run --rm ghcr.io/yuanweize/gluetun-pia-watchdog list-servers --pf
-
-# Force a one-shot renewal
-docker compose exec gluetun-pia-watchdog /app/entrypoint.sh renew
-
-# View help
-docker run --rm ghcr.io/yuanweize/gluetun-pia-watchdog help
+┌──────────────────────────────────────────────────────────────────────┐
+│                             Docker Host                              │
+│                                                                      │
+│  ┌──────────────────────────────┐    ┌────────────────────────────┐  │
+│  │  gluetun-pia-watchdog        │    │        gluetun             │  │
+│  │                              │    │                            │  │
+│  │  ┌────────────────────────┐  │    │  ┌──────────────────────┐  │  │
+│  │  │  Health Check (120s)   │──┼────┼─▶│  VPN Connection     │  │  │
+│  │  └───────────┬────────────┘  │    │  └──────────────────────┘  │  │
+│  │              │ FAIL ×3       │    │                            │  │
+│  │  ┌───────────▼────────────┐  │    │  ┌──────────────────────┐  │  │
+│  │  │  PIA REST API Client   │  │    │  │  PIA Port Forwarding  │  │  │
+│  │  │  → Auth & Token        │  │    │  │  → forwarded_port ──┼──┼──┐
+│  │  │  → Latency Test        │  │    │  └──────────────────────┘  │  ││
+│  │  │  → Register WG Key     │  │    │                            │  ││
+│  │  └───────────┬────────────┘  │    └────────────────────────────┘  ││
+│  │              │               │                                    ││
+│  │  ┌───────────▼────────────┐  │    ┌────────────────────────────┐  ││
+│  │  │  Update .env           │  │    │      qBittorrent           │  ││
+│  │  │  Restart Gluetun ──────┼──┼───▶│                            │  ││
+│  │  └────────────────────────┘  │    │  ┌──────────────────────┐  │  ││
+│  │                              │    │  │  Listen Port ◀──────┼──┼──┘│
+│  │  ┌────────────────────────┐  │    │  └──────────────────────┘  │   │
+│  │  │  Port Watcher          │  │    │                            │   │
+│  │  │  (inotifywait) ────────┼──┼───▶│  API Set Preferences       │   │
+│  │  └────────────────────────┘  │    └────────────────────────────┘   │
+│  └──────────────────────────────┘                                     │
+│                                                                       │
+│  .env ◀── Auto-updated by Watchdog ── Read by Docker Compose         │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Required Volumes
+## 📄 License
 
-| Mount | Purpose |
-|:------|:--------|
-| `./data/gluetun/temp:/tmp/gluetun` | Shared directory for Gluetun's `forwarded_port` file |
-| `/var/run/docker.sock:/var/run/docker.sock:ro` | Docker socket (**read-only**) for health checks and container restart |
-| `./.env:/config/.env` | Persistent `.env` file shared between watchdog and Docker Compose |
-
----
-
-## FAQ
-
-<details>
-<summary><strong>Why not use Gluetun's built-in PIA support?</strong></summary>
-
-Gluetun's native PIA integration frequently breaks when PIA rotates server infrastructure. Using the `custom` provider with manually-registered WireGuard keys is more reliable — this container automates the manual part.
-</details>
-
-<details>
-<summary><strong>Is mounting the Docker socket safe?</strong></summary>
-
-The socket is mounted **read-only** (`:ro`). The watchdog only uses it for:
-1. Running health checks inside the Gluetun container (`exec`)
-2. Restarting the Gluetun container (`restart`)
-
-It cannot pull images, create new containers, or perform destructive operations.
-</details>
-
-<details>
-<summary><strong>Can I use this without qBittorrent?</strong></summary>
-
-Yes! The port injection is optional. If qBittorrent isn't reachable, the watchdog logs a warning and continues with VPN health monitoring.
-</details>
-
-<details>
-<summary><strong>What happens during a renewal?</strong></summary>
-
-1. Gluetun restarts (~5-10 seconds of downtime)
-2. All containers using `network_mode: "service:gluetun"` briefly lose network
-3. Gluetun reconnects with fresh WireGuard keys
-4. Port forwarding re-establishes automatically
-5. Watchdog injects the new port into qBittorrent
-
-Total downtime: typically under 30 seconds.
-</details>
-
-<details>
-<summary><strong>Where do I find PIA region IDs?</strong></summary>
-
-Use the built-in server browser:
-```bash
-docker run --rm ghcr.io/yuanweize/gluetun-pia-watchdog list-servers --pf --ids
-```
-
-Or check the raw API: https://serverlist.piaservers.net/vpninfo/servers/v6
-</details>
-
----
-
-## Credits & Inspiration
-
-- [qdm12/gluetun](https://github.com/qdm12/gluetun) — The VPN container that makes this all possible
-- [snoringdragon/gluetun-qbittorrent-port-manager](https://github.com/snoringdragon/gluetun-qbittorrent-port-manager) — Original port injection concept
-- [pia-foss/manual-connections](https://github.com/pia-foss/manual-connections) — Official PIA scripts that we automated
-
----
-
-## License
-
-[MIT License](LICENSE) — free to use, modify, and distribute.
+[MIT License](LICENSE) — free to use and adapt.
