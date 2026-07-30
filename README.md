@@ -41,7 +41,7 @@
 
 ```
 Watchdog detects failure → Authenticates with PIA API → Measures server latency
-→ Registers fresh WireGuard keys → Updates .env & wg0.conf → Restarts Gluetun
+→ Registers fresh WireGuard keys → Updates .env → Restarts Gluetun
 → Injects port into qBittorrent → 🎉 Fully Automated & Hands-Free
 ```
 
@@ -286,7 +286,6 @@ Special thanks to the awesome open-source projects that made this possible:
 - **[snoringdragon/gluetun-qbittorrent-port-manager](https://github.com/snoringdragon/gluetun-qbittorrent-port-manager)** — The original inspiration for automated qBittorrent port injection.
 - **[pia-foss/manual-connections](https://github.com/pia-foss/manual-connections)** — Official Private Internet Access manual connection scripts.
 - **[LinuxServer.io](https://linuxserver.io)** — Premium Docker container images for the home server community.
-- **Google DeepMind / Antigravity AI Team** — Pair-programming & agentic AI assistant.
 
 ---
 

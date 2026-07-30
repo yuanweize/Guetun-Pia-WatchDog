@@ -38,7 +38,7 @@
 
 1. **自动注册**：通过 PIA 官方 REST API 自动生成并注册 WireGuard 密钥对
 2. **智能选路**：自动测速并选择延迟最低且支持端口转发（PF）的 PIA 服务器
-3. **无缝更新**：原子化更新 `.env` & `wg0.conf` 文件并自动调用 Docker API 重启 Gluetun
+3. **无缝更新**：原子化更新 `.env` 文件并自动调用 Docker API 重启 Gluetun
 4. **自愈断线看门狗**：定时检测 VPN 连通性，断线自动触发全套重连续期流程
 5. **端口全自动注入**：监控 `/tmp/gluetun/forwarded_port` 并自动写入 qBittorrent
 
@@ -271,7 +271,6 @@ docker compose run --rm gluetun-pia-watchdog list-servers --pf --ids
 - **[snoringdragon/gluetun-qbittorrent-port-manager](https://github.com/snoringdragon/gluetun-qbittorrent-port-manager)** — 自动向 qBittorrent 注入端口的最初灵感来源。
 - **[pia-foss/manual-connections](https://github.com/pia-foss/manual-connections)** — PIA 官方开源的 WireGuard 手动连接脚本。
 - **[LinuxServer.io](https://linuxserver.io)** — 为 Home Lab 社区提供高品质 Docker 镜像的团队。
-- **Google DeepMind / Antigravity AI 团队** — 强大的 Agentic AI 结对编程与自动化构建支撑。
 
 ---
 
