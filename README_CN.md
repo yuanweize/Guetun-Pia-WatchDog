@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/github/license/yuanweize/gluetun-pia-watchdog?style=for-the-badge&color=blue" alt="License">
   <img src="https://img.shields.io/badge/Docker-GHCR-blue?style=for-the-badge&logo=docker" alt="Docker">
   <img src="https://img.shields.io/badge/Architecture-amd64%20%7C%20arm64-brightgreen?style=for-the-badge" alt="Architecture">
-  <img src="https://img.shields.io/badge/Release-v1.0.3-orange?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Release-v1.0.4-orange?style=for-the-badge" alt="Version">
 </p>
 
 <p align="center">
@@ -15,6 +15,7 @@
   <a href="#-痛点与背景">痛点与背景</a> •
   <a href="#-核心功能">核心功能</a> •
   <a href="#-快速开始">快速开始</a> •
+  <a href="#-运行日志示例">日志示例</a> •
   <a href="#-服务器交互式浏览器">服务器浏览器</a> •
   <a href="#-环境变量配置">环境变量配置</a> •
   <a href="#-工作原理架构">工作原理</a> •
@@ -84,7 +85,6 @@ PIA_PF=true              # 过滤必须支持端口转发
 # ── 动态 WireGuard 配置（Watchdog 自动更新，请勿手动编辑）──
 SERVER_NAMES=
 WIREGUARD_ENDPOINT_IP=
-WIREGUARD_ENDPOINT_PORT=
 WIREGUARD_PUBLIC_KEY=
 WIREGUARD_PRIVATE_KEY=
 WIREGUARD_ADDRESSES=
@@ -145,28 +145,47 @@ services:
     depends_on:
       - gluetun
       - qbittorrent
-
-  qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
-    container_name: qbittorrent
-    network_mode: "service:gluetun"
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - WEBUI_PORT=8080
-    volumes:
-      - ./qbittorrent:/config
-      - /data/downloads:/data/downloads
-    restart: unless-stopped
-    depends_on:
-      - gluetun
 ```
 
-### 3. 一键启动
+---
 
-```bash
-docker compose up -d
-docker logs -f gluetun-pia-watchdog  # 查看全自动流转日志
+## 📜 运行日志示例
+
+以下是 `gluetun-pia-watchdog` 启动、自动向 PIA 注册 WireGuard 密钥、重启 Gluetun 并将端口注入 qBittorrent 的真实控制台日志：
+
+```text
+   ______   __                  __                ____  _____  ___       _       ______     __       __                    __
+  / ____/  / /  __  __  ___    / /_  __  ______  / __ \/  _/  /   |     | |     / / __ \   / /______/ /_  ____  ____  ____/ /
+ / / __   / /  / / / / / _ \  / __/ / / / / __ \/ /_/ // /   / /| |     | | /| / / /_/ /  / __/ ___/ __ \/ __ \/ __ \/ __  / 
+/ /_/ /  / /__/ /_/ / /  __/ / /_  / /_/ / / / / ____// /   / ___ |     | |/ |/ / ____/  / /_/ /__/ / / / /_/ / /_/ / /_/ /  
+\____/  /____/\__,_/  \___/  \__/  \__,_/_/ /_/_/   /___/  /_/  |_|     |__/|__/_/       \__/\___/_/ /_/\____/\____/\__,_/   
+                                                                                                                   v1.0.4
+[2026-07-30 18:24:17] [INFO]  ════════════════════════════════════════════════════════════════════════════
+[2026-07-30 18:24:17] [INFO]    GLUETUN_CONTAINER    = gluetun
+[2026-07-30 18:24:17] [INFO]    HEALTH_CHECK_INTERVAL= 120s
+[2026-07-30 18:24:17] [INFO]    HEALTH_CHECK_FAILURES= 3
+[2026-07-30 18:24:17] [INFO]    RENEW_INTERVAL       = 604800s
+[2026-07-30 18:24:17] [INFO]    QBITTORRENT_SERVER   = gluetun
+[2026-07-30 18:24:17] [INFO]    PREFERRED_REGION     = swiss
+[2026-07-30 18:24:17] [INFO]  ════════════════════════════════════════════════════════════════════════════
+[2026-07-30 18:24:17] [INFO]  WireGuard configuration in /config/.env missing or empty — running initial PIA setup …
+[2026-07-30 18:24:17] [INFO]  🔄 Running PIA WireGuard renewal …
+[2026-07-30 18:24:17] [INFO]  Authenticating with PIA as p1111548 …
+[2026-07-30 18:24:19] [INFO]  Token acquired (expires in 24 h).
+[2026-07-30 18:24:19] [INFO]  Fetching PIA server list …
+[2026-07-30 18:24:19] [INFO]  Using specified region: swiss
+[2026-07-30 18:24:19] [INFO]  Best WireGuard server: Server-10837-2a (195.177.93.76) in Switzerland
+[2026-07-30 18:24:19] [INFO]  Generated fresh WireGuard keypair.
+[2026-07-30 18:24:19] [INFO]  Registering public key with PIA WireGuard API on 195.177.93.76 …
+[2026-07-30 18:24:20] [INFO]  ✅ Key registered! peer_ip=10.36.0.58 server_port=1337
+[2026-07-30 18:24:20] [INFO]  Updating WireGuard variables in /config/.env …
+[2026-07-30 18:24:20] [INFO]  ✅ .env updated (other variables preserved).
+[2026-07-30 18:24:20] [INFO]  ✅ WireGuard config written to /tmp/gluetun/wg0.conf
+[2026-07-30 18:24:20] [INFO]  Restarting container 'gluetun' …
+[2026-07-30 18:24:20] [INFO]  ✅ Container 'gluetun' restarted successfully.
+[2026-07-30 18:24:20] [INFO]  🎉 PIA WireGuard renewal complete.
+[2026-07-30 18:24:36] [INFO]  Injecting port 57907 into qBittorrent at gluetun:8080 …
+[2026-07-30 18:24:36] [INFO]  ✅ qBittorrent listening port set to 57907
 ```
 
 ---
@@ -187,6 +206,59 @@ docker compose run --rm gluetun-pia-watchdog list-servers --pf --latency 0.05
 
 # 仅输出 Region ID（便于复制到 .env 的 PREFERRED_REGION 变量）
 docker compose run --rm gluetun-pia-watchdog list-servers --pf --ids
+```
+
+---
+
+## ⚙️ 环境变量配置
+
+所有的关键配置只需要在 `.env` 中维护一份：
+
+### 用户核心配置 (`.env`)
+
+| 变量名 | 默认值 | 说明 |
+|:---|:---|:---|
+| `PIA_USER` | *(必填)* | PIA 账号 (例如 `p1234567`) |
+| `PIA_PASS` | *(必填)* | PIA 密码 |
+| `PREFERRED_REGION` | `none` | 目标地区 ID。`none` 表示自动选择最快节点。可通过 `list-servers --ids` 查询 |
+| `MAX_LATENCY` | `0.1` | 自动选择节点时的最大可容忍延迟（秒） |
+| `PIA_PF` | `true` | 是否仅筛选支持端口转发的节点 |
+
+---
+
+## 🏗️ 工作原理架构
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                             Docker 宿主机                            │
+│                                                                      │
+│  ┌──────────────────────────────┐    ┌────────────────────────────┐  │
+│  │  gluetun-pia-watchdog        │    │        gluetun             │  │
+│  │                              │    │                            │  │
+│  │  ┌────────────────────────┐  │    │  ┌──────────────────────┐  │  │
+│  │  │  健康检查轮询 (120s)     │──┼────┼─▶│  VPN 连接 (WireGuard)│  │  │
+│  │  └───────────┬────────────┘  │    │  └──────────────────────┘  │  │
+│  │              │ 失败 ×3       │    │                            │  │
+│  │  ┌───────────▼────────────┐  │    │  ┌──────────────────────┐  │  │
+│  │  │  PIA REST API 客户端   │  │    │  │  PIA 端口转发 API    │  │  │
+│  │  │  → 身份认证获取 Token   │  │    │  │  → forwarded_port ──┼──┼──┐
+│  │  │  → 全球节点 Ping 测速   │  │    │  └──────────────────────┘  │  ││
+│  │  │  → 生成 & 注册 WG Key   │  │    │                            │  ││
+│  │  └───────────┬────────────┘  │    └────────────────────────────┘  ││
+│  │              │               │                                    ││
+│  │  ┌───────────▼────────────┐  │    ┌────────────────────────────┐  ││
+│  │  │  更新 .env 与 wg0.conf │  │    │      qBittorrent           │  ││
+│  │  │  Docker API 重启 Gluetun ┼──┼───▶│                            │  ││
+│  │  └────────────────────────┘  │    │  ┌──────────────────────┐  │  ││
+│  │                              │    │  │  监听端口 ◀──────────┼──┼──┘│
+│  │  ┌────────────────────────┐  │    │  └──────────────────────┘  │   │
+│  │  │  端口监听器             │  │    │                            │   │
+│  │  │  (inotifywait 实时同步) ┼──┼───▶│  API 设置监听端口          │   │
+│  │  └────────────────────────┘  │    └────────────────────────────┘   │
+│  └──────────────────────────────┘                                     │
+│                                                                       │
+│  .env ◀── 自动更新 ── Read by Docker Compose                          │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
 ---

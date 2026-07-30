@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/github/license/yuanweize/gluetun-pia-watchdog?style=for-the-badge&color=blue" alt="License">
   <img src="https://img.shields.io/badge/Docker-GHCR-blue?style=for-the-badge&logo=docker" alt="Docker">
   <img src="https://img.shields.io/badge/Architecture-amd64%20%7C%20arm64-brightgreen?style=for-the-badge" alt="Architecture">
-  <img src="https://img.shields.io/badge/Release-v1.0.3-orange?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Release-v1.0.4-orange?style=for-the-badge" alt="Version">
   <a href="README_CN.md"><img src="https://img.shields.io/badge/文档-简体中文-red?style=for-the-badge" alt="中文文档"></a>
 </p>
 
@@ -16,6 +16,7 @@
   <a href="#the-problem">The Problem</a> •
   <a href="#key-features">Features</a> •
   <a href="#quick-start">Quick Start</a> •
+  <a href="#log-output-example">Log Examples</a> •
   <a href="#server-browser">Server Browser</a> •
   <a href="#configuration">Configuration</a> •
   <a href="#architecture">Architecture</a> •
@@ -86,7 +87,6 @@ PIA_PF=true              # only port-forwarding servers
 # ── Dynamic WireGuard Config (auto-populated by Watchdog) ──
 SERVER_NAMES=
 WIREGUARD_ENDPOINT_IP=
-WIREGUARD_ENDPOINT_PORT=
 WIREGUARD_PUBLIC_KEY=
 WIREGUARD_PRIVATE_KEY=
 WIREGUARD_ADDRESSES=
@@ -164,11 +164,45 @@ services:
       - gluetun
 ```
 
-### 3. Launch
+---
 
-```bash
-docker compose up -d
-docker logs -f gluetun-pia-watchdog
+## 📜 Log Output Example
+
+Here is what it looks like when `gluetun-pia-watchdog` initializes, registers WireGuard keys, restarts Gluetun, and injects the port into qBittorrent:
+
+```text
+   ______   __                  __                ____  _____  ___       _       ______     __       __                    __
+  / ____/  / /  __  __  ___    / /_  __  ______  / __ \/  _/  /   |     | |     / / __ \   / /______/ /_  ____  ____  ____/ /
+ / / __   / /  / / / / / _ \  / __/ / / / / __ \/ /_/ // /   / /| |     | | /| / / /_/ /  / __/ ___/ __ \/ __ \/ __ \/ __  / 
+/ /_/ /  / /__/ /_/ / /  __/ / /_  / /_/ / / / / ____// /   / ___ |     | |/ |/ / ____/  / /_/ /__/ / / / /_/ / /_/ / /_/ /  
+\____/  /____/\__,_/  \___/  \__/  \__,_/_/ /_/_/   /___/  /_/  |_|     |__/|__/_/       \__/\___/_/ /_/\____/\____/\__,_/   
+                                                                                                                   v1.0.4
+[2026-07-30 18:24:17] [INFO]  ════════════════════════════════════════════════════════════════════════════
+[2026-07-30 18:24:17] [INFO]    GLUETUN_CONTAINER    = gluetun
+[2026-07-30 18:24:17] [INFO]    HEALTH_CHECK_INTERVAL= 120s
+[2026-07-30 18:24:17] [INFO]    HEALTH_CHECK_FAILURES= 3
+[2026-07-30 18:24:17] [INFO]    RENEW_INTERVAL       = 604800s
+[2026-07-30 18:24:17] [INFO]    QBITTORRENT_SERVER   = gluetun
+[2026-07-30 18:24:17] [INFO]    PREFERRED_REGION     = swiss
+[2026-07-30 18:24:17] [INFO]  ════════════════════════════════════════════════════════════════════════════
+[2026-07-30 18:24:17] [INFO]  WireGuard configuration in /config/.env missing or empty — running initial PIA setup …
+[2026-07-30 18:24:17] [INFO]  🔄 Running PIA WireGuard renewal …
+[2026-07-30 18:24:17] [INFO]  Authenticating with PIA as p1111548 …
+[2026-07-30 18:24:19] [INFO]  Token acquired (expires in 24 h).
+[2026-07-30 18:24:19] [INFO]  Fetching PIA server list …
+[2026-07-30 18:24:19] [INFO]  Using specified region: swiss
+[2026-07-30 18:24:19] [INFO]  Best WireGuard server: Server-10837-2a (195.177.93.76) in Switzerland
+[2026-07-30 18:24:19] [INFO]  Generated fresh WireGuard keypair.
+[2026-07-30 18:24:19] [INFO]  Registering public key with PIA WireGuard API on 195.177.93.76 …
+[2026-07-30 18:24:20] [INFO]  ✅ Key registered! peer_ip=10.36.0.58 server_port=1337
+[2026-07-30 18:24:20] [INFO]  Updating WireGuard variables in /config/.env …
+[2026-07-30 18:24:20] [INFO]  ✅ .env updated (other variables preserved).
+[2026-07-30 18:24:20] [INFO]  ✅ WireGuard config written to /tmp/gluetun/wg0.conf
+[2026-07-30 18:24:20] [INFO]  Restarting container 'gluetun' …
+[2026-07-30 18:24:20] [INFO]  ✅ Container 'gluetun' restarted successfully.
+[2026-07-30 18:24:20] [INFO]  🎉 PIA WireGuard renewal complete.
+[2026-07-30 18:24:36] [INFO]  Injecting port 57907 into qBittorrent at gluetun:8080 …
+[2026-07-30 18:24:36] [INFO]  ✅ qBittorrent listening port set to 57907
 ```
 
 ---
