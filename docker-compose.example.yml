@@ -1,0 +1,78 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# Example docker-compose.yml for gluetun-pia-watchdog
+# Copy .env.example to .env and fill in your PIA credentials first!
+# ══════════════════════════════════════════════════════════════════════════════
+services:
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - TZ=Europe/Prague
+      - VPN_SERVICE_PROVIDER=custom
+      - VPN_TYPE=wireguard
+      # ⬇️ Auto-populated from .env by gluetun-pia-watchdog
+      - SERVER_NAMES=${SERVER_NAMES}
+      - WIREGUARD_ENDPOINT_IP=${WIREGUARD_ENDPOINT_IP}
+      - WIREGUARD_ENDPOINT_PORT=${WIREGUARD_ENDPOINT_PORT}
+      - WIREGUARD_PUBLIC_KEY=${WIREGUARD_PUBLIC_KEY}
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES}
+      # PIA port forwarding (credentials from .env)
+      - VPN_PORT_FORWARDING=on
+      - VPN_PORT_FORWARDING_PROVIDER=private internet access
+      - VPN_PORT_FORWARDING_USERNAME=${PIA_USER}
+      - VPN_PORT_FORWARDING_PASSWORD=${PIA_PASS}
+    volumes:
+      - ./data/gluetun/temp:/tmp/gluetun
+    ports:
+      - "8090:8080"   # qBittorrent WebUI
+    restart: unless-stopped
+
+  gluetun-pia-watchdog:
+    image: ghcr.io/yuanweize/gluetun-pia-watchdog:latest
+    container_name: gluetun-pia-watchdog
+    restart: unless-stopped
+    environment:
+      - PIA_USER=${PIA_USER}
+      - PIA_PASS=${PIA_PASS}
+      - PREFERRED_REGION=${PREFERRED_REGION}
+      - MAX_LATENCY=${MAX_LATENCY}
+      - PIA_PF=${PIA_PF}
+      - GLUETUN_CONTAINER=gluetun
+      - GLUETUN_ENV_FILE=/config/.env
+      - QBITTORRENT_SERVER=gluetun
+      - QBITTORRENT_PORT=8080
+      - QBITTORRENT_USER=admin
+      - QBITTORRENT_PASS=adminadmin       # ← Change to your qBittorrent password
+      - PORT_FORWARDED=/tmp/gluetun/forwarded_port
+      - HTTP_S=http
+      - HEALTH_CHECK_INTERVAL=120         # Check every 2 minutes
+      - HEALTH_CHECK_FAILURES=3           # Renew after 3 consecutive failures
+      - RENEW_INTERVAL=604800             # Proactive renewal every 7 days
+    volumes:
+      - ./data/gluetun/temp:/tmp/gluetun
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./.env:/config/.env
+    depends_on:
+      - gluetun
+      - qbittorrent
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: "service:gluetun"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/Prague
+      - WEBUI_PORT=8080
+    volumes:
+      - ./qbittorrent:/config
+      - /data/downloads:/data/downloads
+    restart: unless-stopped
+    depends_on:
+      - gluetun
