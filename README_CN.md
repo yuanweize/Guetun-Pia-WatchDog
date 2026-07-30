@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/github/license/yuanweize/gluetun-pia-watchdog?style=for-the-badge&color=blue" alt="License">
   <img src="https://img.shields.io/badge/Docker-GHCR-blue?style=for-the-badge&logo=docker" alt="Docker">
   <img src="https://img.shields.io/badge/Architecture-amd64%20%7C%20arm64-brightgreen?style=for-the-badge" alt="Architecture">
-  <img src="https://img.shields.io/badge/Release-v1.0.4-orange?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Release-v1.0.5-orange?style=for-the-badge" alt="Version">
 </p>
 
 <p align="center">
@@ -15,9 +15,10 @@
   <a href="#-痛点与背景">痛点与背景</a> •
   <a href="#-核心功能">核心功能</a> •
   <a href="#-快速开始">快速开始</a> •
+  <a href="#-命令行用法全指南">命令行指南</a> •
   <a href="#-运行日志示例">日志示例</a> •
   <a href="#-服务器交互式浏览器">服务器浏览器</a> •
-  <a href="#-环境变量配置">环境变量配置</a> •
+  <a href="#-环境变量配置详解">环境变量</a> •
   <a href="#-工作原理架构">工作原理</a> •
   <a href="#-致谢与特别鸣谢">致谢与鸣谢</a> •
   <a href="#-常见问题与故障排查">常见问题</a>
@@ -51,7 +52,7 @@
 | 🔑 **全自动密钥注册** | 自动调用 PIA REST API 完成 `addKey` 注册，无需任何人工干预 |
 | 🌍 **智能低延迟选路** | 自动 Ping 测速，从全球 100+ 服务器中选择最快节点，或锁定指定地区 |
 | 🔍 **服务器浏览器** | 内置 CLI 交互式工具，支持按端口转发（PF）、地区关键字、延迟过滤 |
-| 📝 **安全更新 `.env` 与 `wg0.conf`** | 精确更新 WireGuard 配置，完美兼容 Docker bind-mount 文件挂载 |
+| 📝 **安全更新 `.env`** | 精确更新 WireGuard 配置，完美兼容 Docker bind-mount 文件挂载 |
 | 🔄 **Docker Socket 联动** | 连接宿主机 Docker Socket (`:ro`)，续期完成后自动重启 Gluetun |
 | 🏥 **连通性看门狗** | 每 2 分钟执行一次健康检查，连续 3 次失败自动触发自愈续期 |
 | ⏰ **预防性定期续期** | 即使网络正常，每 7 天也会自动预防性刷一次密钥，防止静默过期 |
@@ -85,6 +86,7 @@ PIA_PF=true              # 过滤必须支持端口转发
 # ── 动态 WireGuard 配置（Watchdog 自动更新，请勿手动编辑）──
 SERVER_NAMES=
 WIREGUARD_ENDPOINT_IP=
+WIREGUARD_ENDPOINT_PORT=
 WIREGUARD_PUBLIC_KEY=
 WIREGUARD_PRIVATE_KEY=
 WIREGUARD_ADDRESSES=
@@ -118,7 +120,6 @@ services:
       - VPN_PORT_FORWARDING_PASSWORD=${PIA_PASS}
     volumes:
       - ./data/gluetun/temp:/tmp/gluetun
-      - ./data/gluetun/temp/wg0.conf:/gluetun/wireguard/wg0.conf:ro
     ports:
       - "8090:8080"   # qBittorrent WebUI
     restart: unless-stopped
@@ -145,6 +146,61 @@ services:
     depends_on:
       - gluetun
       - qbittorrent
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: "service:gluetun"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - WEBUI_PORT=8080
+    volumes:
+      - ./qbittorrent:/config
+      - /data/downloads:/data/downloads
+    restart: unless-stopped
+    depends_on:
+      - gluetun
+```
+
+---
+
+## 🛠️ 命令行用法全指南
+
+Watchdog 镜像内置了丰富的子命令，支持后台守护、节点测速浏览、手动单次续期等操作：
+
+### 1. 启动守护进程 (默认模式)
+```bash
+docker compose up -d gluetun-pia-watchdog
+```
+
+### 2. 浏览 PIA 服务器 (`list-servers`)
+```bash
+# 查所有支持端口转发的服务器（按延迟升序排列）
+docker compose run --rm gluetun-pia-watchdog list-servers --pf
+
+# 按地区筛选 (例如德国 / 荷兰 / 瑞士)
+docker compose run --rm gluetun-pia-watchdog list-servers --pf --region germany
+
+# 限制最大延迟低于 50ms (0.05秒)
+docker compose run --rm gluetun-pia-watchdog list-servers --pf --latency 0.05
+
+# 仅输出 Region ID（便于复制填入 .env 的 PREFERRED_REGION 变量）
+docker compose run --rm gluetun-pia-watchdog list-servers --pf --ids
+
+# 输出原始 JSON 格式
+docker compose run --rm gluetun-pia-watchdog list-servers --pf --json
+```
+
+### 3. 手动强行触发单次密钥续期 (`renew`)
+当你怀疑 PIA 节点过期或者想要手动切换节点时，可以立刻运行：
+```bash
+docker compose exec gluetun-pia-watchdog /app/entrypoint.sh renew
+```
+
+### 4. 查看交互式帮助菜单 (`help`)
+```bash
+docker run --rm ghcr.io/yuanweize/gluetun-pia-watchdog help
 ```
 
 ---
@@ -159,33 +215,19 @@ services:
  / / __   / /  / / / / / _ \  / __/ / / / / __ \/ /_/ // /   / /| |     | | /| / / /_/ /  / __/ ___/ __ \/ __ \/ __ \/ __  / 
 / /_/ /  / /__/ /_/ / /  __/ / /_  / /_/ / / / / ____// /   / ___ |     | |/ |/ / ____/  / /_/ /__/ / / / /_/ / /_/ / /_/ /  
 \____/  /____/\__,_/  \___/  \__/  \__,_/_/ /_/_/   /___/  /_/  |_|     |__/|__/_/       \__/\___/_/ /_/\____/\____/\__,_/   
-                                                                                                                   v1.0.4
-[2026-07-30 18:24:17] [INFO]  ════════════════════════════════════════════════════════════════════════════
-[2026-07-30 18:24:17] [INFO]    GLUETUN_CONTAINER    = gluetun
-[2026-07-30 18:24:17] [INFO]    HEALTH_CHECK_INTERVAL= 120s
-[2026-07-30 18:24:17] [INFO]    HEALTH_CHECK_FAILURES= 3
-[2026-07-30 18:24:17] [INFO]    RENEW_INTERVAL       = 604800s
-[2026-07-30 18:24:17] [INFO]    QBITTORRENT_SERVER   = gluetun
-[2026-07-30 18:24:17] [INFO]    PREFERRED_REGION     = swiss
-[2026-07-30 18:24:17] [INFO]  ════════════════════════════════════════════════════════════════════════════
-[2026-07-30 18:24:17] [INFO]  WireGuard configuration in /config/.env missing or empty — running initial PIA setup …
-[2026-07-30 18:24:17] [INFO]  🔄 Running PIA WireGuard renewal …
-[2026-07-30 18:24:17] [INFO]  Authenticating with PIA as p1111548 …
-[2026-07-30 18:24:19] [INFO]  Token acquired (expires in 24 h).
-[2026-07-30 18:24:19] [INFO]  Fetching PIA server list …
-[2026-07-30 18:24:19] [INFO]  Using specified region: swiss
-[2026-07-30 18:24:19] [INFO]  Best WireGuard server: Server-10837-2a (195.177.93.76) in Switzerland
-[2026-07-30 18:24:19] [INFO]  Generated fresh WireGuard keypair.
-[2026-07-30 18:24:19] [INFO]  Registering public key with PIA WireGuard API on 195.177.93.76 …
-[2026-07-30 18:24:20] [INFO]  ✅ Key registered! peer_ip=10.36.0.58 server_port=1337
-[2026-07-30 18:24:20] [INFO]  Updating WireGuard variables in /config/.env …
-[2026-07-30 18:24:20] [INFO]  ✅ .env updated (other variables preserved).
-[2026-07-30 18:24:20] [INFO]  ✅ WireGuard config written to /tmp/gluetun/wg0.conf
-[2026-07-30 18:24:20] [INFO]  Restarting container 'gluetun' …
-[2026-07-30 18:24:20] [INFO]  ✅ Container 'gluetun' restarted successfully.
-[2026-07-30 18:24:20] [INFO]  🎉 PIA WireGuard renewal complete.
-[2026-07-30 18:24:36] [INFO]  Injecting port 57907 into qBittorrent at gluetun:8080 …
-[2026-07-30 18:24:36] [INFO]  ✅ qBittorrent listening port set to 57907
+                                                                                                                   v1.0.5
+[2026-07-30 18:36:12] [INFO]  ════════════════════════════════════════════════════════════════════════════
+[2026-07-30 18:36:12] [INFO]    GLUETUN_CONTAINER    = gluetun
+[2026-07-30 18:36:12] [INFO]    HEALTH_CHECK_INTERVAL= 120s
+[2026-07-30 18:36:12] [INFO]    HEALTH_CHECK_FAILURES= 3
+[2026-07-30 18:36:12] [INFO]    RENEW_INTERVAL       = 604800s
+[2026-07-30 18:36:12] [INFO]    QBITTORRENT_SERVER   = gluetun
+[2026-07-30 18:36:12] [INFO]    PREFERRED_REGION     = swiss
+[2026-07-30 18:36:12] [INFO]  ════════════════════════════════════════════════════════════════════════════
+[2026-07-30 18:36:12] [INFO]  Starting port file watcher on /tmp/gluetun/forwarded_port …
+[2026-07-30 18:36:12] [INFO]  Port watcher started (PID 19).
+[2026-07-30 18:36:23] [INFO]  Injecting port 35563 into qBittorrent at gluetun:8080 …
+[2026-07-30 18:36:23] [INFO]  ✅ qBittorrent listening port set to 35563
 ```
 
 ---
@@ -210,7 +252,7 @@ docker compose run --rm gluetun-pia-watchdog list-servers --pf --ids
 
 ---
 
-## ⚙️ 环境变量配置
+## ⚙️ 环境变量配置详解
 
 所有的关键配置只需要在 `.env` 中维护一份：
 
@@ -223,6 +265,20 @@ docker compose run --rm gluetun-pia-watchdog list-servers --pf --ids
 | `PREFERRED_REGION` | `none` | 目标地区 ID。`none` 表示自动选择最快节点。可通过 `list-servers --ids` 查询 |
 | `MAX_LATENCY` | `0.1` | 自动选择节点时的最大可容忍延迟（秒） |
 | `PIA_PF` | `true` | 是否仅筛选支持端口转发的节点 |
+
+### Watchdog 高级调优 (环境参数)
+
+| 变量名 | 默认值 | 说明 |
+|:---|:---|:---|
+| `GLUETUN_CONTAINER` | `gluetun` | 需要监控和重启的 Gluetun 容器名称 |
+| `GLUETUN_ENV_FILE` | `/config/.env` | 容器内挂载的 `.env` 路径 |
+| `QBITTORRENT_SERVER` | `gluetun` | qBittorrent 访问地址 |
+| `QBITTORRENT_PORT` | `8080` | qBittorrent WebUI 端口 |
+| `QBITTORRENT_USER` | `admin` | qBittorrent 用户名 |
+| `QBITTORRENT_PASS` | `adminadmin` | qBittorrent 密码 |
+| `HEALTH_CHECK_INTERVAL` | `120` | 健康检查间隔（秒） |
+| `HEALTH_CHECK_FAILURES` | `3` | 连续失败多少次触发自动重连续期 |
+| `RENEW_INTERVAL` | `604800` | 预防性定期续期周期（秒，默认 7 天） |
 
 ---
 
@@ -247,7 +303,7 @@ docker compose run --rm gluetun-pia-watchdog list-servers --pf --ids
 │  │  └───────────┬────────────┘  │    └────────────────────────────┘  ││
 │  │              │               │                                    ││
 │  │  ┌───────────▼────────────┐  │    ┌────────────────────────────┐  ││
-│  │  │  更新 .env 与 wg0.conf │  │    │      qBittorrent           │  ││
+│  │  │  更新 .env 文件        │  │    │      qBittorrent           │  ││
 │  │  │  Docker API 重启 Gluetun ┼──┼───▶│                            │  ││
 │  │  └────────────────────────┘  │    │  ┌──────────────────────┐  │  ││
 │  │                              │    │  │  监听端口 ◀──────────┼──┼──┘│

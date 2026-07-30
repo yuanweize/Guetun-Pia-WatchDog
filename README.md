@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/github/license/yuanweize/gluetun-pia-watchdog?style=for-the-badge&color=blue" alt="License">
   <img src="https://img.shields.io/badge/Docker-GHCR-blue?style=for-the-badge&logo=docker" alt="Docker">
   <img src="https://img.shields.io/badge/Architecture-amd64%20%7C%20arm64-brightgreen?style=for-the-badge" alt="Architecture">
-  <img src="https://img.shields.io/badge/Release-v1.0.4-orange?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Release-v1.0.5-orange?style=for-the-badge" alt="Version">
   <a href="README_CN.md"><img src="https://img.shields.io/badge/文档-简体中文-red?style=for-the-badge" alt="中文文档"></a>
 </p>
 
@@ -16,6 +16,7 @@
   <a href="#the-problem">The Problem</a> •
   <a href="#key-features">Features</a> •
   <a href="#quick-start">Quick Start</a> •
+  <a href="#cli-usage-guide">CLI Guide</a> •
   <a href="#log-output-example">Log Examples</a> •
   <a href="#server-browser">Server Browser</a> •
   <a href="#configuration">Configuration</a> •
@@ -54,7 +55,7 @@ Watchdog detects failure → Authenticates with PIA API → Measures server late
 | 🔑 **Auto Key Registration** | Calls PIA's REST API `addKey` to register WireGuard keys automatically |
 | 🌍 **Smart Server Selection** | Ping-tests 100+ servers to find the fastest port-forwarding node |
 | 🔍 **Interactive Server Browser** | Built-in CLI tool to search & filter servers by region, latency, or port-forwarding |
-| 📝 **Atomic `.env` & `wg0.conf` Updates** | Surgically updates WireGuard parameters without modifying user credentials (Docker bind-mount safe) |
+| 📝 **Atomic `.env` Updates** | Surgically updates WireGuard parameters without modifying user credentials |
 | 🔄 **Docker Socket Automation** | Triggers container restart via Docker socket (`:ro`) upon renewal |
 | 🏥 **Self-Healing Watchdog** | Checks VPN health every 2 minutes; auto-renews after 3 consecutive failures |
 | ⏰ **Proactive Weekly Renewal** | Forces key refresh every 7 days to prevent silent key expiry |
@@ -87,6 +88,7 @@ PIA_PF=true              # only port-forwarding servers
 # ── Dynamic WireGuard Config (auto-populated by Watchdog) ──
 SERVER_NAMES=
 WIREGUARD_ENDPOINT_IP=
+WIREGUARD_ENDPOINT_PORT=
 WIREGUARD_PUBLIC_KEY=
 WIREGUARD_PRIVATE_KEY=
 WIREGUARD_ADDRESSES=
@@ -120,7 +122,6 @@ services:
       - VPN_PORT_FORWARDING_PASSWORD=${PIA_PASS}
     volumes:
       - ./data/gluetun/temp:/tmp/gluetun
-      - ./data/gluetun/temp/wg0.conf:/gluetun/wireguard/wg0.conf:ro
     ports:
       - "8090:8080"
     restart: unless-stopped
@@ -166,9 +167,46 @@ services:
 
 ---
 
-## 📜 Log Output Example
+## 🛠️ CLI Usage Guide
 
-Here is what it looks like when `gluetun-pia-watchdog` initializes, registers WireGuard keys, restarts Gluetun, and injects the port into qBittorrent:
+The container image includes a rich suite of built-in subcommands:
+
+### 1. Start Watchdog Daemon (Default)
+```bash
+docker compose up -d gluetun-pia-watchdog
+```
+
+### 2. Interactive Server Browser (`list-servers`)
+```bash
+# List all port-forwarding servers sorted by latency
+docker compose run --rm gluetun-pia-watchdog list-servers --pf
+
+# Filter by region (e.g. Germany, Netherlands, Switzerland)
+docker compose run --rm gluetun-pia-watchdog list-servers --pf --region germany
+
+# Latency threshold < 50ms (0.05s)
+docker compose run --rm gluetun-pia-watchdog list-servers --pf --latency 0.05
+
+# Output only region IDs (useful for PREFERRED_REGION config)
+docker compose run --rm gluetun-pia-watchdog list-servers --pf --ids
+
+# Raw JSON output
+docker compose run --rm gluetun-pia-watchdog list-servers --pf --json
+```
+
+### 3. Force Immediate Key Renewal (`renew`)
+```bash
+docker compose exec gluetun-pia-watchdog /app/entrypoint.sh renew
+```
+
+### 4. Interactive Help Menu (`help`)
+```bash
+docker run --rm ghcr.io/yuanweize/gluetun-pia-watchdog help
+```
+
+---
+
+## 📜 Log Output Example
 
 ```text
    ______   __                  __                ____  _____  ___       _       ______     __       __                    __
@@ -176,68 +214,48 @@ Here is what it looks like when `gluetun-pia-watchdog` initializes, registers Wi
  / / __   / /  / / / / / _ \  / __/ / / / / __ \/ /_/ // /   / /| |     | | /| / / /_/ /  / __/ ___/ __ \/ __ \/ __ \/ __  / 
 / /_/ /  / /__/ /_/ / /  __/ / /_  / /_/ / / / / ____// /   / ___ |     | |/ |/ / ____/  / /_/ /__/ / / / /_/ / /_/ / /_/ /  
 \____/  /____/\__,_/  \___/  \__/  \__,_/_/ /_/_/   /___/  /_/  |_|     |__/|__/_/       \__/\___/_/ /_/\____/\____/\__,_/   
-                                                                                                                   v1.0.4
-[2026-07-30 18:24:17] [INFO]  ════════════════════════════════════════════════════════════════════════════
-[2026-07-30 18:24:17] [INFO]    GLUETUN_CONTAINER    = gluetun
-[2026-07-30 18:24:17] [INFO]    HEALTH_CHECK_INTERVAL= 120s
-[2026-07-30 18:24:17] [INFO]    HEALTH_CHECK_FAILURES= 3
-[2026-07-30 18:24:17] [INFO]    RENEW_INTERVAL       = 604800s
-[2026-07-30 18:24:17] [INFO]    QBITTORRENT_SERVER   = gluetun
-[2026-07-30 18:24:17] [INFO]    PREFERRED_REGION     = swiss
-[2026-07-30 18:24:17] [INFO]  ════════════════════════════════════════════════════════════════════════════
-[2026-07-30 18:24:17] [INFO]  WireGuard configuration in /config/.env missing or empty — running initial PIA setup …
-[2026-07-30 18:24:17] [INFO]  🔄 Running PIA WireGuard renewal …
-[2026-07-30 18:24:17] [INFO]  Authenticating with PIA as p1111548 …
-[2026-07-30 18:24:19] [INFO]  Token acquired (expires in 24 h).
-[2026-07-30 18:24:19] [INFO]  Fetching PIA server list …
-[2026-07-30 18:24:19] [INFO]  Using specified region: swiss
-[2026-07-30 18:24:19] [INFO]  Best WireGuard server: Server-10837-2a (195.177.93.76) in Switzerland
-[2026-07-30 18:24:19] [INFO]  Generated fresh WireGuard keypair.
-[2026-07-30 18:24:19] [INFO]  Registering public key with PIA WireGuard API on 195.177.93.76 …
-[2026-07-30 18:24:20] [INFO]  ✅ Key registered! peer_ip=10.36.0.58 server_port=1337
-[2026-07-30 18:24:20] [INFO]  Updating WireGuard variables in /config/.env …
-[2026-07-30 18:24:20] [INFO]  ✅ .env updated (other variables preserved).
-[2026-07-30 18:24:20] [INFO]  ✅ WireGuard config written to /tmp/gluetun/wg0.conf
-[2026-07-30 18:24:20] [INFO]  Restarting container 'gluetun' …
-[2026-07-30 18:24:20] [INFO]  ✅ Container 'gluetun' restarted successfully.
-[2026-07-30 18:24:20] [INFO]  🎉 PIA WireGuard renewal complete.
-[2026-07-30 18:24:36] [INFO]  Injecting port 57907 into qBittorrent at gluetun:8080 …
-[2026-07-30 18:24:36] [INFO]  ✅ qBittorrent listening port set to 57907
+                                                                                                                   v1.0.5
+[2026-07-30 18:36:12] [INFO]  ════════════════════════════════════════════════════════════════════════════
+[2026-07-30 18:36:12] [INFO]    GLUETUN_CONTAINER    = gluetun
+[2026-07-30 18:36:12] [INFO]    HEALTH_CHECK_INTERVAL= 120s
+[2026-07-30 18:36:12] [INFO]    HEALTH_CHECK_FAILURES= 3
+[2026-07-30 18:36:12] [INFO]    RENEW_INTERVAL       = 604800s
+[2026-07-30 18:36:12] [INFO]    QBITTORRENT_SERVER   = gluetun
+[2026-07-30 18:36:12] [INFO]    PREFERRED_REGION     = swiss
+[2026-07-30 18:36:12] [INFO]  ════════════════════════════════════════════════════════════════════════════
+[2026-07-30 18:36:12] [INFO]  Starting port file watcher on /tmp/gluetun/forwarded_port …
+[2026-07-30 18:36:12] [INFO]  Port watcher started (PID 19).
+[2026-07-30 18:36:23] [INFO]  Injecting port 35563 into qBittorrent at gluetun:8080 …
+[2026-07-30 18:36:23] [INFO]  ✅ qBittorrent listening port set to 35563
 ```
 
 ---
 
-## 🔍 Server Browser
-
-Find the fastest server for your location with the interactive server browser:
-
-```bash
-# List all port-forwarding servers sorted by latency
-docker compose run --rm gluetun-pia-watchdog list-servers --pf
-
-# Filter by region (e.g. Germany, Netherlands, US)
-docker compose run --rm gluetun-pia-watchdog list-servers --pf --region germany
-
-# Latency threshold < 50ms (0.05s)
-docker compose run --rm gluetun-pia-watchdog list-servers --pf --latency 0.05
-
-# Output only region IDs (to copy into PREFERRED_REGION)
-docker compose run --rm gluetun-pia-watchdog list-servers --pf --ids
-```
-
----
-
-## ⚙️ Configuration
+## ⚙️ Configuration Reference
 
 ### `.env` User Variables
 
 | Variable | Default | Description |
 |:---|:---|:---|
 | `PIA_USER` | *(required)* | PIA username (e.g. `p1234567`) |
-| `PIA_PASS` | *(required)* | PIA password |
+| `PIA_Pass` | *(required)* | PIA password |
 | `PREFERRED_REGION` | `none` | Region ID. `none` = auto-select fastest. Get IDs via `list-servers --ids` |
 | `MAX_LATENCY` | `0.1` | Maximum acceptable latency in seconds |
 | `PIA_PF` | `true` | Filter for port-forwarding capable servers |
+
+### Container Advanced Tuning
+
+| Variable | Default | Description |
+|:---|:---|:---|
+| `GLUETUN_CONTAINER` | `gluetun` | Name of your Gluetun container |
+| `GLUETUN_ENV_FILE` | `/config/.env` | Mounted `.env` file path |
+| `QBITTORRENT_SERVER` | `gluetun` | qBittorrent hostname |
+| `QBITTORRENT_PORT` | `8080` | qBittorrent WebUI port |
+| `QBITTORRENT_USER` | `admin` | qBittorrent username |
+| `QBITTORRENT_PASS` | `adminadmin` | qBittorrent password |
+| `HEALTH_CHECK_INTERVAL` | `120` | Health check interval in seconds |
+| `HEALTH_CHECK_FAILURES` | `3` | Consecutive failures before triggering renewal |
+| `RENEW_INTERVAL` | `604800` | Proactive renewal interval (default: 7 days) |
 
 ---
 
@@ -262,7 +280,7 @@ docker compose run --rm gluetun-pia-watchdog list-servers --pf --ids
 │  │  └───────────┬────────────┘  │    └────────────────────────────┘  ││
 │  │              │               │                                    ││
 │  │  ┌───────────▼────────────┐  │    ┌────────────────────────────┐  ││
-│  │  │  Update .env & wg0.conf│  │    │      qBittorrent           │  ││
+│  │  │  Update .env           │  │    │      qBittorrent           │  ││
 │  │  │  Restart Gluetun ──────┼──┼───▶│                            │  ││
 │  │  └────────────────────────┘  │    │  ┌──────────────────────┐  │  ││
 │  │                              │    │  │  Listen Port ◀──────┼──┼──┘│
